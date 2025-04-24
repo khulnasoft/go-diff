@@ -404,14 +404,11 @@ func (dmp *DiffMatchPatch) DiffLinesToRunes(text1, text2 string) ([]rune, []rune
 func (dmp *DiffMatchPatch) DiffCharsToLines(diffs []Diff, lineArray []string) []Diff {
 	hydrated := make([]Diff, 0, len(diffs))
 	for _, aDiff := range diffs {
-		runes := []rune(aDiff.Text)
-		text := make([]string, len(runes))
-
-		for i, r := range runes {
-			text[i] = lineArray[runeToInt(r)]
+		var sb strings.Builder
+		for _, i := range []rune(aDiff.Text) {
+			sb.WriteString(lineArray[i])
 		}
-
-		aDiff.Text = strings.Join(text, "")
+		aDiff.Text = sb.String()
 		hydrated = append(hydrated, aDiff)
 	}
 	return hydrated
@@ -1308,17 +1305,17 @@ func (dmp *DiffMatchPatch) diffLinesToStrings(text1, text2 string) (string, stri
 	// '\x00' is a valid character, but various debuggers don't like it. So we'll insert a junk entry to avoid generating a null character.
 	lineArray := []string{""} // e.g. lineArray[4] == 'Hello\n'
 
-	lineHash := make(map[string]int)
 	//Each string has the index of lineArray which it points to
-	strIndexArray1 := dmp.diffLinesToStringsMunge(text1, &lineArray, lineHash)
-	strIndexArray2 := dmp.diffLinesToStringsMunge(text2, &lineArray, lineHash)
+	strIndexArray1 := dmp.diffLinesToStringsMunge(text1, &lineArray)
+	strIndexArray2 := dmp.diffLinesToStringsMunge(text2, &lineArray)
 
 	return intArrayToString(strIndexArray1), intArrayToString(strIndexArray2), lineArray
 }
 
 // diffLinesToStringsMunge splits a text into an array of strings, and reduces the texts to a []string.
-func (dmp *DiffMatchPatch) diffLinesToStringsMunge(text string, lineArray *[]string, lineHash map[string]int) []uint32 {
+func (dmp *DiffMatchPatch) diffLinesToStringsMunge(text string, lineArray *[]string) []uint32 {
 	// Walk the text, pulling out a substring for each line. text.split('\n') would would temporarily double our memory footprint. Modifying text would create many large strings to garbage collect.
+	lineHash := map[string]int{} // e.g. lineHash['Hello\n'] == 4
 	lineStart := 0
 	lineEnd := -1
 	strs := []uint32{}
